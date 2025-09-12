@@ -2,15 +2,16 @@
 import fetch from 'node-fetch';
 
 export async function handler(event) {
-  const { category } = event.queryStringParameters || {};
+  const { category, token: tokenQuery } = event.queryStringParameters || {};
 
   if (!category) {
     return { statusCode: 400, body: JSON.stringify({ error: "Missing category parameter" }) };
   }
 
-  // 1️⃣ Validate API token from Authorization header
+  // 1️⃣ Get API token (from header or query string)
   const authHeader = event.headers.authorization || "";
-  const apiToken = authHeader.replace("Bearer ", "").trim();
+  const apiToken = authHeader.replace("Bearer ", "").trim() || tokenQuery;
+
   if (!apiToken) {
     return { statusCode: 403, body: JSON.stringify({ error: "Missing API token" }) };
   }
