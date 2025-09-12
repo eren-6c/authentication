@@ -1,126 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>API Status Dashboard</title>
-  <style>
-    body {
-      margin:0;
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #1e1e2f, #2a2a3d);
-      color: #fff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>API Status Dashboard</title>
+<style>
+  body {
+    margin:0;
+    font-family: 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #1e1e2f, #2a2a3d);
+    color: #fff;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
 
-    .dashboard {
-      background: rgba(0,0,0,0.5);
-      border-radius: 20px;
-      padding: 40px 60px;
-      box-shadow: 0 0 30px rgba(0,255,149,0.5);
-      width: 350px;
-      text-align: center;
-      animation: glow 2s infinite alternate;
-    }
+  .dashboard {
+    background: rgba(0,0,0,0.6);
+    border-radius: 20px;
+    padding: 40px 60px;
+    box-shadow: 0 0 30px rgba(0,255,149,0.5);
+    width: 400px;
+    text-align: center;
+    animation: glow 2s infinite alternate;
+  }
 
-    @keyframes glow {
-      0% { box-shadow: 0 0 20px rgba(0,255,149,0.5); }
-      100% { box-shadow: 0 0 40px rgba(0,255,149,1); }
-    }
+  @keyframes glow {
+    0% { box-shadow: 0 0 20px rgba(0,255,149,0.5); }
+    100% { box-shadow: 0 0 40px rgba(0,255,149,1); }
+  }
 
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 30px;
-      color: #00ff95;
-      text-shadow: 0 0 10px #00ff95;
-    }
+  h1 {
+    font-size: 2rem;
+    margin-bottom: 30px;
+    color: #00ff95;
+    text-shadow: 0 0 10px #00ff95;
+  }
 
-    .status-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(0,255,149,0.2);
-      font-size: 1.1rem;
-    }
+  .status-item {
+    margin-bottom: 20px;
+  }
 
-    .status-item:last-child {
-      border-bottom: none;
-    }
+  .label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+  }
 
-    .status-value {
-      font-weight: bold;
-      color: #00ff95;
-      text-shadow: 0 0 5px #00ff95;
-    }
+  .value {
+    font-weight: bold;
+    color: #00ff95;
+  }
 
-    .status-value.down {
-      color: #ff3b3b;
-      text-shadow: 0 0 5px #ff3b3b;
-    }
+  .value.down {
+    color: #ff3b3b;
+  }
 
-    .ping {
-      font-size: 0.9rem;
-      margin-top: 15px;
-      color: #ccc;
-    }
-  </style>
+  .bar-container {
+    background: rgba(255,255,255,0.1);
+    height: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  .bar {
+    height: 100%;
+    width: 0;
+    background: #00ff95;
+    border-radius: 6px;
+    transition: width 0.5s ease;
+  }
+
+  .ping-bar { background: #00bfff; }
+  .requests-bar { background: #ffcc00; }
+  .uptime-bar { background: #00ff95; }
+
+  .timestamp {
+    margin-top: 15px;
+    color: #ccc;
+    font-size: 0.9rem;
+  }
+
+</style>
 </head>
 <body>
 
-  <div class="dashboard">
-    <h1>API Status</h1>
+<div class="dashboard">
+  <h1>API Status</h1>
 
-    <div class="status-item">
+  <div class="status-item">
+    <div class="label">
       <span>Server Status</span>
-      <span class="status-value" id="server-status">Online ✅</span>
+      <span class="value" id="server-status">Online ✅</span>
     </div>
-
-    <div class="status-item">
-      <span>Ping</span>
-      <span class="status-value" id="ping">...</span>
-    </div>
-
-    <div class="status-item">
-      <span>Requests/sec</span>
-      <span class="status-value" id="requests">...</span>
-    </div>
-
-    <div class="status-item">
-      <span>Uptime</span>
-      <span class="status-value" id="uptime">...</span>
-    </div>
-
-    <div class="ping" id="last-updated">Last updated: --:--:--</div>
   </div>
 
-  <script>
-    function randomInt(min, max) {
-      return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
+  <div class="status-item">
+    <div class="label">
+      <span>Ping</span>
+      <span class="value" id="ping">0 ms</span>
+    </div>
+    <div class="bar-container">
+      <div class="bar ping-bar" id="ping-bar"></div>
+    </div>
+  </div>
 
-    function updateStatus() {
-      const ping = randomInt(20, 150); // ms
-      const requests = randomInt(50, 500); // requests/sec
-      const uptime = randomInt(99, 100) + '.' + randomInt(0,99) + '%';
+  <div class="status-item">
+    <div class="label">
+      <span>Requests/sec</span>
+      <span class="value" id="requests">0 req/sec</span>
+    </div>
+    <div class="bar-container">
+      <div class="bar requests-bar" id="requests-bar"></div>
+    </div>
+  </div>
 
-      document.getElementById('ping').textContent = ping + ' ms';
-      document.getElementById('requests').textContent = requests + ' req/sec';
-      document.getElementById('uptime').textContent = uptime;
+  <div class="status-item">
+    <div class="label">
+      <span>Uptime</span>
+      <span class="value" id="uptime">0%</span>
+    </div>
+    <div class="bar-container">
+      <div class="bar uptime-bar" id="uptime-bar"></div>
+    </div>
+  </div>
 
-      const now = new Date();
-      document.getElementById('last-updated').textContent = 'Last updated: ' +
-        now.getHours().toString().padStart(2,'0') + ':' +
-        now.getMinutes().toString().padStart(2,'0') + ':' +
-        now.getSeconds().toString().padStart(2,'0');
-    }
+  <div class="timestamp" id="last-updated">Last updated: --:--:--</div>
+</div>
 
-    // Update every 2 seconds to simulate live API
-    updateStatus();
-    setInterval(updateStatus, 2000);
-  </script>
+<script>
+  // initial values
+  let ping = 50;
+  let requests = 200;
+  let uptime = 99.9;
+
+  function randomFluctuate(value, minChange, maxChange, minValue, maxValue) {
+    let change = Math.random() * (maxChange - minChange) + minChange;
+    value += Math.random() < 0.5 ? -change : change;
+    return Math.min(Math.max(value, minValue), maxValue);
+  }
+
+  function updateDashboard() {
+    ping = randomFluctuate(ping, 1, 10, 20, 150);
+    requests = randomFluctuate(requests, 5, 20, 50, 500);
+    uptime = randomFluctuate(uptime, 0, 0.02, 99.0, 100.0);
+
+    document.getElementById('ping').textContent = ping.toFixed(0) + ' ms';
+    document.getElementById('ping-bar').style.width = ((150 - ping)/150 * 100) + '%';
+
+    document.getElementById('requests').textContent = requests.toFixed(0) + ' req/sec';
+    document.getElementById('requests-bar').style.width = (requests/500 * 100) + '%';
+
+    document.getElementById('uptime').textContent = uptime.toFixed(2) + '%';
+    document.getElementById('uptime-bar').style.width = (uptime/100 * 100) + '%';
+
+    const now = new Date();
+    document.getElementById('last-updated').textContent = 'Last updated: ' +
+      now.getHours().toString().padStart(2,'0') + ':' +
+      now.getMinutes().toString().padStart(2,'0') + ':' +
+      now.getSeconds().toString().padStart(2,'0');
+  }
+
+  updateDashboard();
+  setInterval(updateDashboard, 1500);
+</script>
 
 </body>
 </html>
