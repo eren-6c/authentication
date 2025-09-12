@@ -19,6 +19,7 @@ export async function handler(event) {
   const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
 
   try {
+    // Fetch the GitHub JSON
     const res = await fetch(url, {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -48,26 +49,29 @@ export async function handler(event) {
       };
     }
 
-    // ✅ Check HWID
-    if (hwid) {
-      if (user.hwid && user.hwid !== hwid) {
+    // ✅ HWID logic
+    if (user.hwid) {
+      // User already has a HWID, must match if provided
+      if (hwid && hwid !== user.hwid) {
         return {
           statusCode: 403,
           body: JSON.stringify({ error: 'HWID mismatch' }),
         };
       }
-
-      // If HWID is empty, bind it automatically
-      if (!user.hwid) {
+    } else {
+      // User has no HWID yet, bind it if a value is provided
+      if (hwid) {
         user.hwid = hwid;
 
-        // Optional: commit the HWID to GitHub immediately
-        const sha = (await fetch(url, {
+        // Commit HWID to GitHub
+        const fileInfo = await fetch(url, {
           headers: {
             Authorization: `token ${GITHUB_TOKEN}`,
             Accept: 'application/vnd.github.v3+json',
           },
-        }).then(r => r.json())).sha;
+        }).then(r => r.json());
+
+        const sha = fileInfo.sha;
 
         await fetch(url, {
           method: 'PUT',
