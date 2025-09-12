@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>API Status Dashboard</title>
+<title>API Status Dashboard with Graph</title>
 <style>
   body {
     margin:0;
@@ -13,17 +13,19 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    flex-direction: column;
+    min-height: 100vh;
   }
 
   .dashboard {
     background: rgba(0,0,0,0.6);
     border-radius: 20px;
-    padding: 40px 60px;
+    padding: 30px 50px;
     box-shadow: 0 0 30px rgba(0,255,149,0.5);
-    width: 400px;
+    width: 500px;
     text-align: center;
     animation: glow 2s infinite alternate;
+    margin-bottom: 20px;
   }
 
   @keyframes glow {
@@ -33,13 +35,13 @@
 
   h1 {
     font-size: 2rem;
-    margin-bottom: 30px;
+    margin-bottom: 25px;
     color: #00ff95;
     text-shadow: 0 0 10px #00ff95;
   }
 
   .status-item {
-    margin-bottom: 20px;
+    margin-bottom: 15px;
   }
 
   .label {
@@ -54,10 +56,6 @@
     color: #00ff95;
   }
 
-  .value.down {
-    color: #ff3b3b;
-  }
-
   .bar-container {
     background: rgba(255,255,255,0.1);
     height: 12px;
@@ -68,7 +66,6 @@
   .bar {
     height: 100%;
     width: 0;
-    background: #00ff95;
     border-radius: 6px;
     transition: width 0.5s ease;
   }
@@ -76,6 +73,12 @@
   .ping-bar { background: #00bfff; }
   .requests-bar { background: #ffcc00; }
   .uptime-bar { background: #00ff95; }
+
+  canvas {
+    background: rgba(0,0,0,0.4);
+    border-radius: 10px;
+    margin-top: 20px;
+  }
 
   .timestamp {
     margin-top: 15px;
@@ -130,11 +133,21 @@
   <div class="timestamp" id="last-updated">Last updated: --:--:--</div>
 </div>
 
+<canvas id="status-graph" width="500" height="200"></canvas>
+
 <script>
   // initial values
   let ping = 50;
   let requests = 200;
   let uptime = 99.9;
+
+  const pingHistory = [];
+  const requestsHistory = [];
+  const uptimeHistory = [];
+  const maxPoints = 50;
+
+  const canvas = document.getElementById('status-graph');
+  const ctx = canvas.getContext('2d');
 
   function randomFluctuate(value, minChange, maxChange, minValue, maxValue) {
     let change = Math.random() * (maxChange - minChange) + minChange;
@@ -143,6 +156,7 @@
   }
 
   function updateDashboard() {
+    // update fake stats
     ping = randomFluctuate(ping, 1, 10, 20, 150);
     requests = randomFluctuate(requests, 5, 20, 50, 500);
     uptime = randomFluctuate(uptime, 0, 0.02, 99.0, 100.0);
@@ -161,6 +175,38 @@
       now.getHours().toString().padStart(2,'0') + ':' +
       now.getMinutes().toString().padStart(2,'0') + ':' +
       now.getSeconds().toString().padStart(2,'0');
+
+    // save history
+    pingHistory.push(ping);
+    requestsHistory.push(requests);
+    uptimeHistory.push(uptime);
+
+    if(pingHistory.length > maxPoints) pingHistory.shift();
+    if(requestsHistory.length > maxPoints) requestsHistory.shift();
+    if(uptimeHistory.length > maxPoints) uptimeHistory.shift();
+
+    drawGraph();
+  }
+
+  function drawGraph() {
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+
+    function drawLine(history, color, maxVal) {
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      history.forEach((val, i) => {
+        const x = i * (canvas.width / maxPoints);
+        const y = canvas.height - (val/maxVal * canvas.height);
+        if(i===0) ctx.moveTo(x,y);
+        else ctx.lineTo(x,y);
+      });
+      ctx.stroke();
+    }
+
+    drawLine(pingHistory, '#00bfff', 150); // ping blue
+    drawLine(requestsHistory, '#ffcc00', 500); // requests yellow
+    drawLine(uptimeHistory, '#00ff95', 100); // uptime green
   }
 
   updateDashboard();
