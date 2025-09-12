@@ -1,13 +1,13 @@
 // netlify/functions/fetchUser.js
-import fetch from "node-fetch";
+import fetch from 'node-fetch';
 
 export async function handler(event) {
-  const { category, username } = event.queryStringParameters || {};
+  const { category, username, password } = event.queryStringParameters || {};
 
-  if (!category || !username) {
+  if (!category || !username || !password) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: "Missing category or username" }),
+      body: JSON.stringify({ error: 'Missing category, username, or password' }),
     };
   }
 
@@ -22,22 +22,29 @@ export async function handler(event) {
     const res = await fetch(url, {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
-        Accept: "application/vnd.github.v3.raw",
+        Accept: 'application/vnd.github.v3.raw',
       },
     });
 
-    if (!res.ok) throw new Error("Failed to fetch GitHub file");
+    if (!res.ok) throw new Error('Failed to fetch GitHub file');
 
-    const data = await res.json(); // JSON from GitHub
+    const data = await res.json();
 
     if (!data[category] || !data[category][username]) {
       return {
         statusCode: 404,
-        body: JSON.stringify({ error: "User not found" }),
+        body: JSON.stringify({ error: 'User not found' }),
       };
     }
 
     const user = data[category][username];
+
+    if (user.password !== password) {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ error: 'Invalid password' }),
+      };
+    }
 
     return {
       statusCode: 200,
