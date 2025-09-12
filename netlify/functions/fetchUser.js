@@ -2,7 +2,7 @@
 import fetch from 'node-fetch';
 
 export async function handler(event) {
-  const { category, username, password } = event.queryStringParameters || {};
+  const { category, username, password, hwid } = event.queryStringParameters || {};
 
   if (!category || !username || !password) {
     return {
@@ -46,6 +46,42 @@ export async function handler(event) {
         statusCode: 401,
         body: JSON.stringify({ error: 'Invalid password' }),
       };
+    }
+
+    // ✅ Check HWID
+    if (hwid) {
+      if (user.hwid && user.hwid !== hwid) {
+        return {
+          statusCode: 403,
+          body: JSON.stringify({ error: 'HWID mismatch' }),
+        };
+      }
+
+      // If HWID is empty, bind it automatically
+      if (!user.hwid) {
+        user.hwid = hwid;
+
+        // Optional: commit the HWID to GitHub immediately
+        const sha = (await fetch(url, {
+          headers: {
+            Authorization: `token ${GITHUB_TOKEN}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        }).then(r => r.json())).sha;
+
+        await fetch(url, {
+          method: 'PUT',
+          headers: {
+            Authorization: `token ${GITHUB_TOKEN}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+          body: JSON.stringify({
+            message: `Bind HWID for user ${username}`,
+            content: Buffer.from(JSON.stringify(data, null, 2)).toString('base64'),
+            sha,
+          }),
+        });
+      }
     }
 
     // ✅ Return username + all user fields at top level
