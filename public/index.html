@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>API Status Dashboard with Graph</title>
+<title>Ultra Smooth API Dashboard</title>
 <style>
   body {
     margin:0;
@@ -22,7 +22,7 @@
     border-radius: 20px;
     padding: 30px 50px;
     box-shadow: 0 0 30px rgba(0,255,149,0.5);
-    width: 500px;
+    width: 600px;
     text-align: center;
     animation: glow 2s infinite alternate;
     margin-bottom: 20px;
@@ -75,7 +75,7 @@
   .uptime-bar { background: #00ff95; }
 
   canvas {
-    background: rgba(0,0,0,0.4);
+    background: rgba(0,0,0,0.3);
     border-radius: 10px;
     margin-top: 20px;
   }
@@ -84,6 +84,18 @@
     margin-top: 15px;
     color: #ccc;
     font-size: 0.9rem;
+  }
+
+  .tooltip {
+    position: absolute;
+    background: rgba(0,0,0,0.7);
+    padding: 5px 10px;
+    border-radius: 5px;
+    pointer-events: none;
+    color: #fff;
+    font-size: 0.85rem;
+    display: none;
+    z-index: 10;
   }
 
 </style>
@@ -133,21 +145,23 @@
   <div class="timestamp" id="last-updated">Last updated: --:--:--</div>
 </div>
 
-<canvas id="status-graph" width="500" height="200"></canvas>
+<canvas id="status-graph" width="600" height="250"></canvas>
+<div class="tooltip" id="tooltip"></div>
 
 <script>
-  // initial values
+  // Initial fake values
   let ping = 50;
   let requests = 200;
   let uptime = 99.9;
 
+  const maxPoints = 80;
   const pingHistory = [];
   const requestsHistory = [];
   const uptimeHistory = [];
-  const maxPoints = 50;
 
   const canvas = document.getElementById('status-graph');
   const ctx = canvas.getContext('2d');
+  const tooltip = document.getElementById('tooltip');
 
   function randomFluctuate(value, minChange, maxChange, minValue, maxValue) {
     let change = Math.random() * (maxChange - minChange) + minChange;
@@ -156,10 +170,9 @@
   }
 
   function updateDashboard() {
-    // update fake stats
-    ping = randomFluctuate(ping, 1, 10, 20, 150);
-    requests = randomFluctuate(requests, 5, 20, 50, 500);
-    uptime = randomFluctuate(uptime, 0, 0.02, 99.0, 100.0);
+    ping = randomFluctuate(ping, 1, 5, 20, 150);
+    requests = randomFluctuate(requests, 2, 15, 50, 500);
+    uptime = randomFluctuate(uptime, 0, 0.01, 99.0, 100.0);
 
     document.getElementById('ping').textContent = ping.toFixed(0) + ' ms';
     document.getElementById('ping-bar').style.width = ((150 - ping)/150 * 100) + '%';
@@ -176,7 +189,6 @@
       now.getMinutes().toString().padStart(2,'0') + ':' +
       now.getSeconds().toString().padStart(2,'0');
 
-    // save history
     pingHistory.push(ping);
     requestsHistory.push(requests);
     uptimeHistory.push(uptime);
@@ -191,10 +203,16 @@
   function drawGraph() {
     ctx.clearRect(0,0,canvas.width, canvas.height);
 
-    function drawLine(history, color, maxVal) {
+    const drawLine = (history, color, maxVal) => {
       ctx.beginPath();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 2;
+      const gradient = ctx.createLinearGradient(0,0,canvas.width,0);
+      gradient.addColorStop(0, color);
+      gradient.addColorStop(1, 'rgba(255,255,255,0.3)');
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
+
       history.forEach((val, i) => {
         const x = i * (canvas.width / maxPoints);
         const y = canvas.height - (val/maxVal * canvas.height);
@@ -202,15 +220,62 @@
         else ctx.lineTo(x,y);
       });
       ctx.stroke();
+
+      // draw moving dots
+      ctx.fillStyle = color;
+      const lastIndex = history.length-1;
+      const lastX = lastIndex*(canvas.width/maxPoints);
+      const lastY = canvas.height - (history[lastIndex]/maxVal * canvas.height);
+      ctx.beginPath();
+      ctx.arc(lastX,lastY,4,0,Math.PI*2);
+      ctx.fill();
+    };
+
+    // draw grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 1;
+    for(let i=0;i<=5;i++){
+      ctx.beginPath();
+      ctx.moveTo(0, i*canvas.height/5);
+      ctx.lineTo(canvas.width, i*canvas.height/5);
+      ctx.stroke();
     }
 
-    drawLine(pingHistory, '#00bfff', 150); // ping blue
-    drawLine(requestsHistory, '#ffcc00', 500); // requests yellow
-    drawLine(uptimeHistory, '#00ff95', 100); // uptime green
+    drawLine(pingHistory, '#00bfff', 150); // blue ping
+    drawLine(requestsHistory, '#ffcc00', 500); // yellow requests
+    drawLine(uptimeHistory, '#00ff95', 100); // green uptime
   }
 
   updateDashboard();
-  setInterval(updateDashboard, 1500);
+  setInterval(updateDashboard, 1000);
+
+  // tooltip hover
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const index = Math.floor(x / (canvas.width/maxPoints));
+    if(index >= pingHistory.length) {
+      tooltip.style.display = 'none';
+      return;
+    }
+    const pingVal = pingHistory[index].toFixed(0);
+    const reqVal = requestsHistory[index].toFixed(0);
+    const uptimeVal = uptimeHistory[index].toFixed(2);
+
+    tooltip.style.display = 'block';
+    tooltip.style.left = e.clientX + 10 + 'px';
+    tooltip.style.top = e.clientY - 30 + 'px';
+    tooltip.innerHTML = `
+      <b>Ping:</b> ${pingVal}ms<br>
+      <b>Requests:</b> ${reqVal}/sec<br>
+      <b>Uptime:</b> ${uptimeVal}%
+    `;
+  });
+
+  canvas.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none';
+  });
+
 </script>
 
 </body>
