@@ -11,6 +11,37 @@ export async function handler(event) {
     };
   }
 
+  // ✅ 1. Validate API token
+  const authHeader = event.headers.authorization || "";
+  const apiToken = authHeader.replace("Bearer ", "").trim();
+  if (!apiToken) {
+    return { statusCode: 403, body: JSON.stringify({ error: "Missing API token" }) };
+  }
+
+  // 2. Fetch token permissions from GitHub raw file
+  const tokenFileUrl = "https://raw.githubusercontent.com/faninpc/userrepo/main/authenticationtokens";
+  let tokens;
+  try {
+    const tokenResp = await fetch(tokenFileUrl);
+    if (!tokenResp.ok) throw new Error("Failed to fetch token file");
+    tokens = await tokenResp.json();
+  } catch (err) {
+    return { statusCode: 500, body: JSON.stringify({ error: "Failed to read token permissions" }) };
+  }
+
+  // 3. Check token validity
+  const tokenData = tokens[apiToken];
+  if (!tokenData) {
+    return { statusCode: 403, body: JSON.stringify({ error: "Invalid API token" }) };
+  }
+
+  // 4. Check read permission for category
+  const allowedReadCategories = tokenData.read || [];
+  if (!allowedReadCategories.includes(category)) {
+    return { statusCode: 403, body: JSON.stringify({ error: "Token does not have read permission for this category" }) };
+  }
+
+  // 5. Fetch user database from GitHub
   const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
   const GITHUB_USER = process.env.GITHUB_USER;
   const GITHUB_REPO = process.env.GITHUB_REPO;
@@ -19,7 +50,6 @@ export async function handler(event) {
   const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
 
   try {
-    // Fetch GitHub JSON
     const res = await fetch(url, {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -31,39 +61,27 @@ export async function handler(event) {
 
     const data = await res.json();
 
-    // Check if category and user exist
+    // 6. Validate user credentials
     if (!data[category] || !data[category][username]) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ error: 'Invalid credentials' }),
-      };
+      return { statusCode: 401, body: JSON.stringify({ error: 'Invalid credentials' }) };
     }
 
     const user = data[category][username];
 
-    // Check password
     if (user.password !== password) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ error: 'Invalid credentials' }),
-      };
+      return { statusCode: 401, body: JSON.stringify({ error: 'Invalid credentials' }) };
     }
 
     // HWID check
     if (user.hwid) {
-      // User already has a bound HWID → must match
       if (hwid !== user.hwid) {
-        return {
-          statusCode: 401,
-          body: JSON.stringify({ error: 'Invalid credentials' }),
-        };
+        return { statusCode: 401, body: JSON.stringify({ error: 'Invalid credentials' }) };
       }
     } else {
-      // User has no HWID yet → return empty hwid
-      user.hwid = "";
+      user.hwid = ""; // return empty if no HWID
     }
 
-    // ✅ Return username + all user fields at top level
+    // 7. Return user data
     return {
       statusCode: 200,
       body: JSON.stringify({
