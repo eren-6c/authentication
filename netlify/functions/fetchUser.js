@@ -30,6 +30,7 @@ export async function handler(event) {
 
     const data = await res.json();
 
+    // Check if category and user exist
     if (!data[category] || !data[category][username]) {
       return {
         statusCode: 404,
@@ -39,6 +40,7 @@ export async function handler(event) {
 
     const user = data[category][username];
 
+    // Check password
     if (user.password !== password) {
       return {
         statusCode: 401,
@@ -46,9 +48,13 @@ export async function handler(event) {
       };
     }
 
+    // ✅ Return username + all user fields at top level
     return {
       statusCode: 200,
-      body: JSON.stringify({ user }),
+      body: JSON.stringify({
+        username,
+        ...user
+      }),
     };
 
   } catch (err) {
