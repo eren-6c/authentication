@@ -54,22 +54,32 @@ export async function handler(event) {
     const res = await fetch(url, {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
-        Accept: 'application/vnd.github.v3.raw',
+        Accept: 'application/vnd.github.v3+json',
       },
     });
 
     if (!res.ok) throw new Error("Failed to fetch GitHub user database");
 
-    const data = await res.json();
+    const fileData = await res.json();
+
+    // GitHub API returns base64 content, decode it
+    const contentJson = Buffer.from(fileData.content, 'base64').toString('utf-8');
+    const data = JSON.parse(contentJson);
 
     if (!data[category]) {
       return { statusCode: 404, body: JSON.stringify({ error: "Category not found" }) };
     }
 
-    // 5️⃣ Return all users in the requested category
+    // Sort users alphabetically for cleaner output
+    const sortedUsers = {};
+    Object.keys(data[category]).sort().forEach(key => {
+      sortedUsers[key] = data[category][key];
+    });
+
+    // 5️⃣ Return all users in the requested category (pretty-printed)
     return {
       statusCode: 200,
-      body: JSON.stringify(data[category]),
+      body: JSON.stringify(sortedUsers, null, 2),
     };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
