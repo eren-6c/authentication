@@ -3,76 +3,70 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Professional API Dashboard</title>
+<title>API Dashboard</title>
 <style>
-  /* -------------------- GENERAL -------------------- */
   body {
     margin:0;
     font-family: 'Segoe UI', sans-serif;
-    background: #121212;
+    background: linear-gradient(135deg, #1e1e2f, #2a2a3d);
     color: #fff;
     display: flex;
     justify-content: center;
-    align-items: flex-start;
+    align-items: center;
     flex-direction: column;
     min-height: 100vh;
-    padding: 30px;
+  }
+
+  .dashboard {
+    background: rgba(0,0,0,0.6);
+    border-radius: 20px;
+    padding: 30px 50px;
+    box-shadow: 0 0 30px rgba(0,255,149,0.5);
+    width: 600px;
+    text-align: center;
+    animation: glow 2s infinite alternate;
+    margin-bottom: 20px;
+  }
+
+  @keyframes glow {
+    0% { box-shadow: 0 0 20px rgba(0,255,149,0.5); }
+    100% { box-shadow: 0 0 40px rgba(0,255,149,1); }
   }
 
   h1 {
-    text-align: center;
+    font-size: 2rem;
+    margin-bottom: 25px;
     color: #00ff95;
-    font-size: 2.2rem;
     text-shadow: 0 0 10px #00ff95;
-    margin-bottom: 30px;
   }
 
-  /* -------------------- DASHBOARD -------------------- */
-  .dashboard {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 20px;
-    margin-bottom: 40px;
+  .status-item {
+    margin-bottom: 15px;
   }
 
-  .card {
-    background: #1e1e2f;
-    border-radius: 15px;
-    padding: 20px;
-    text-align: center;
-    box-shadow: 0 0 20px rgba(0,255,149,0.3);
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  .label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 1.1rem;
+    margin-bottom: 5px;
   }
 
-  .card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 0 35px rgba(0,255,149,0.6);
-  }
-
-  .card .label {
-    font-size: 1rem;
-    color: #aaa;
-    margin-bottom: 10px;
-  }
-
-  .card .value {
-    font-size: 1.8rem;
+  .value {
     font-weight: bold;
     color: #00ff95;
   }
 
-  .card .bar-container {
-    margin-top: 10px;
+  .bar-container {
     background: rgba(255,255,255,0.1);
-    height: 10px;
-    border-radius: 5px;
+    height: 12px;
+    border-radius: 6px;
     overflow: hidden;
   }
 
-  .card .bar {
+  .bar {
     height: 100%;
     width: 0;
-    border-radius: 5px;
+    border-radius: 6px;
     transition: width 0.5s ease;
   }
 
@@ -80,42 +74,22 @@
   .requests-bar { background: #ffcc00; }
   .uptime-bar { background: #00ff95; }
 
-  /* -------------------- GRAPH -------------------- */
-  .graph-container {
-    background: #1e1e2f;
-    border-radius: 15px;
-    padding: 20px;
-    box-shadow: 0 0 25px rgba(0,255,149,0.3);
-    position: relative;
-  }
-
   canvas {
-    display: block;
+    background: rgba(0,0,0,0.3);
     border-radius: 10px;
-    width: 100%;
-    height: 250px;
-  }
-
-  .axis {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
+    margin-top: 20px;
   }
 
   .timestamp {
-    text-align: right;
-    color: #aaa;
+    margin-top: 15px;
+    color: #ccc;
     font-size: 0.9rem;
-    margin-top: 5px;
   }
 
   .tooltip {
     position: absolute;
-    background: rgba(0,0,0,0.8);
-    padding: 6px 12px;
+    background: rgba(0,0,0,0.7);
+    padding: 5px 10px;
     border-radius: 5px;
     pointer-events: none;
     color: #fff;
@@ -128,149 +102,179 @@
 </head>
 <body>
 
-<h1>Professional API Dashboard</h1>
-
 <div class="dashboard">
-  <div class="card">
-    <div class="label">Server Status</div>
-    <div class="value" id="server-status">Online ✅</div>
+  <h1>API Status</h1>
+
+  <div class="status-item">
+    <div class="label">
+      <span>Server Status</span>
+      <span class="value" id="server-status">Online ✅</span>
+    </div>
   </div>
 
-  <div class="card">
-    <div class="label">Ping</div>
-    <div class="value" id="ping">0 ms</div>
+  <div class="status-item">
+    <div class="label">
+      <span>Ping</span>
+      <span class="value" id="ping">0 ms</span>
+    </div>
     <div class="bar-container">
       <div class="bar ping-bar" id="ping-bar"></div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="label">Requests/sec</div>
-    <div class="value" id="requests">0 req/sec</div>
+  <div class="status-item">
+    <div class="label">
+      <span>Requests/sec</span>
+      <span class="value" id="requests">0 req/sec</span>
+    </div>
     <div class="bar-container">
       <div class="bar requests-bar" id="requests-bar"></div>
     </div>
   </div>
 
-  <div class="card">
-    <div class="label">Uptime</div>
-    <div class="value" id="uptime">0%</div>
+  <div class="status-item">
+    <div class="label">
+      <span>Uptime</span>
+      <span class="value" id="uptime">0%</span>
+    </div>
     <div class="bar-container">
       <div class="bar uptime-bar" id="uptime-bar"></div>
     </div>
   </div>
+
+  <div class="timestamp" id="last-updated">Last updated: --:--:--</div>
 </div>
 
-<div class="graph-container">
-  <canvas id="status-graph"></canvas>
-  <div class="tooltip" id="tooltip"></div>
-</div>
-
-<div class="timestamp" id="last-updated">Last updated: --:--:--</div>
+<canvas id="status-graph" width="600" height="250"></canvas>
+<div class="tooltip" id="tooltip"></div>
 
 <script>
+  // Initial fake values
+  let ping = 50;
+  let requests = 200;
+  let uptime = 99.9;
+
   const maxPoints = 80;
-  let ping = 50, requests = 200, uptime = 99.9;
-  const pingHistory = [], requestsHistory = [], uptimeHistory = [];
+  const pingHistory = [];
+  const requestsHistory = [];
+  const uptimeHistory = [];
 
   const canvas = document.getElementById('status-graph');
   const ctx = canvas.getContext('2d');
   const tooltip = document.getElementById('tooltip');
 
-  function randomFluctuate(value, minC, maxC, minV, maxV){
-    let change = Math.random()*(maxC-minC)+minC;
-    value += Math.random()<0.5 ? -change : change;
-    return Math.min(Math.max(value,minV), maxV);
+  function randomFluctuate(value, minChange, maxChange, minValue, maxValue) {
+    let change = Math.random() * (maxChange - minChange) + minChange;
+    value += Math.random() < 0.5 ? -change : change;
+    return Math.min(Math.max(value, minValue), maxValue);
   }
 
-  function updateDashboard(){
-    ping = randomFluctuate(ping,1,5,20,150);
-    requests = randomFluctuate(requests,2,15,50,500);
-    uptime = randomFluctuate(uptime,0,0.01,99,100);
+  function updateDashboard() {
+    ping = randomFluctuate(ping, 1, 5, 20, 150);
+    requests = randomFluctuate(requests, 2, 15, 50, 500);
+    uptime = randomFluctuate(uptime, 0, 0.01, 99.0, 100.0);
 
-    document.getElementById('ping').textContent = ping.toFixed(0)+' ms';
-    document.getElementById('ping-bar').style.width = ((150-ping)/150*100)+'%';
+    document.getElementById('ping').textContent = ping.toFixed(0) + ' ms';
+    document.getElementById('ping-bar').style.width = ((150 - ping)/150 * 100) + '%';
 
-    document.getElementById('requests').textContent = requests.toFixed(0)+' req/sec';
-    document.getElementById('requests-bar').style.width = (requests/500*100)+'%';
+    document.getElementById('requests').textContent = requests.toFixed(0) + ' req/sec';
+    document.getElementById('requests-bar').style.width = (requests/500 * 100) + '%';
 
-    document.getElementById('uptime').textContent = uptime.toFixed(2)+'%';
-    document.getElementById('uptime-bar').style.width = (uptime/100*100)+'%';
+    document.getElementById('uptime').textContent = uptime.toFixed(2) + '%';
+    document.getElementById('uptime-bar').style.width = (uptime/100 * 100) + '%';
 
     const now = new Date();
     document.getElementById('last-updated').textContent = 'Last updated: ' +
-      now.getHours().toString().padStart(2,'0')+':' +
-      now.getMinutes().toString().padStart(2,'0')+':' +
+      now.getHours().toString().padStart(2,'0') + ':' +
+      now.getMinutes().toString().padStart(2,'0') + ':' +
       now.getSeconds().toString().padStart(2,'0');
 
-    pingHistory.push(ping); if(pingHistory.length>maxPoints) pingHistory.shift();
-    requestsHistory.push(requests); if(requestsHistory.length>maxPoints) requestsHistory.shift();
-    uptimeHistory.push(uptime); if(uptimeHistory.length>maxPoints) uptimeHistory.shift();
+    pingHistory.push(ping);
+    requestsHistory.push(requests);
+    uptimeHistory.push(uptime);
+
+    if(pingHistory.length > maxPoints) pingHistory.shift();
+    if(requestsHistory.length > maxPoints) requestsHistory.shift();
+    if(uptimeHistory.length > maxPoints) uptimeHistory.shift();
 
     drawGraph();
   }
 
-  function drawGraph(){
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.clearRect(0,0,w,h);
+  function drawGraph() {
+    ctx.clearRect(0,0,canvas.width, canvas.height);
 
-    // draw grid
-    ctx.strokeStyle='rgba(255,255,255,0.08)';
-    ctx.lineWidth=1;
-    for(let i=0;i<=5;i++){
+    const drawLine = (history, color, maxVal) => {
       ctx.beginPath();
-      ctx.moveTo(0,i*h/5);
-      ctx.lineTo(w,i*h/5);
-      ctx.stroke();
-    }
+      const gradient = ctx.createLinearGradient(0,0,canvas.width,0);
+      gradient.addColorStop(0, color);
+      gradient.addColorStop(1, 'rgba(255,255,255,0.3)');
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 8;
 
-    const drawLine=(history,color,maxVal)=>{
-      ctx.beginPath();
-      ctx.strokeStyle=color;
-      ctx.lineWidth=2.5;
-      ctx.shadowColor=color;
-      ctx.shadowBlur=8;
-      history.forEach((val,i)=>{
-        const x=i*(w/maxPoints);
-        const y=h-(val/maxVal*h);
+      history.forEach((val, i) => {
+        const x = i * (canvas.width / maxPoints);
+        const y = canvas.height - (val/maxVal * canvas.height);
         if(i===0) ctx.moveTo(x,y);
         else ctx.lineTo(x,y);
       });
       ctx.stroke();
 
-      // moving dot
-      const lastVal=history[history.length-1];
-      const lastX=(history.length-1)*(w/maxPoints);
-      const lastY=h-(lastVal/maxVal*h);
+      // draw moving dots
+      ctx.fillStyle = color;
+      const lastIndex = history.length-1;
+      const lastX = lastIndex*(canvas.width/maxPoints);
+      const lastY = canvas.height - (history[lastIndex]/maxVal * canvas.height);
       ctx.beginPath();
       ctx.arc(lastX,lastY,4,0,Math.PI*2);
-      ctx.fillStyle=color;
       ctx.fill();
     };
 
-    drawLine(pingHistory,'#00bfff',150);
-    drawLine(requestsHistory,'#ffcc00',500);
-    drawLine(uptimeHistory,'#00ff95',100);
+    // draw grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+    ctx.lineWidth = 1;
+    for(let i=0;i<=5;i++){
+      ctx.beginPath();
+      ctx.moveTo(0, i*canvas.height/5);
+      ctx.lineTo(canvas.width, i*canvas.height/5);
+      ctx.stroke();
+    }
+
+    drawLine(pingHistory, '#00bfff', 150); // blue ping
+    drawLine(requestsHistory, '#ffcc00', 500); // yellow requests
+    drawLine(uptimeHistory, '#00ff95', 100); // green uptime
   }
 
   updateDashboard();
-  setInterval(updateDashboard,1000);
+  setInterval(updateDashboard, 1000);
 
-  // tooltip
-  canvas.addEventListener('mousemove',(e)=>{
+  // tooltip hover
+  canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
-    const idx = Math.floor(x / (w/maxPoints));
-    if(idx>=pingHistory.length){ tooltip.style.display='none'; return; }
-    tooltip.style.display='block';
-    tooltip.style.left=e.clientX+10+'px';
-    tooltip.style.top=e.clientY-30+'px';
-    tooltip.innerHTML = `<b>Ping:</b> ${pingHistory[idx].toFixed(0)} ms<br>
-                         <b>Requests:</b> ${requestsHistory[idx].toFixed(0)} req/sec<br>
-                         <b>Uptime:</b> ${uptimeHistory[idx].toFixed(2)}%`;
+    const index = Math.floor(x / (canvas.width/maxPoints));
+    if(index >= pingHistory.length) {
+      tooltip.style.display = 'none';
+      return;
+    }
+    const pingVal = pingHistory[index].toFixed(0);
+    const reqVal = requestsHistory[index].toFixed(0);
+    const uptimeVal = uptimeHistory[index].toFixed(2);
+
+    tooltip.style.display = 'block';
+    tooltip.style.left = e.clientX + 10 + 'px';
+    tooltip.style.top = e.clientY - 30 + 'px';
+    tooltip.innerHTML = `
+      <b>Ping:</b> ${pingVal}ms<br>
+      <b>Requests:</b> ${reqVal}/sec<br>
+      <b>Uptime:</b> ${uptimeVal}%
+    `;
   });
-  canvas.addEventListener('mouseleave',()=>{tooltip.style.display='none';});
+
+  canvas.addEventListener('mouseleave', () => {
+    tooltip.style.display = 'none';
+  });
 
 </script>
 
