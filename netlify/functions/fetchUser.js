@@ -19,10 +19,14 @@ export async function handler(event) {
   }
 
   // 2. Fetch token permissions from GitHub raw file
-  const tokenFileUrl = "https://raw.githubusercontent.com/faninpc/userrepo/main/authenticationtokens";
+  const TOKEN_FILE_URL = process.env.GITHUB_TOKEN_FILE_URL; // <-- now a variable
+  if (!TOKEN_FILE_URL) {
+    return { statusCode: 500, body: JSON.stringify({ error: "Token file URL not configured" }) };
+  }
+
   let tokens;
   try {
-    const tokenResp = await fetch(tokenFileUrl);
+    const tokenResp = await fetch(TOKEN_FILE_URL);
     if (!tokenResp.ok) throw new Error("Failed to fetch token file");
     tokens = await tokenResp.json();
   } catch (err) {
