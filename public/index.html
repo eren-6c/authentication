@@ -3,32 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Authentication API Dashboard</title>
+  <title>API Status Dashboard</title>
   <style>
-    /* Reset & font */
-    * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', sans-serif; }
     body {
+      margin:0;
+      font-family: 'Segoe UI', sans-serif;
       background: linear-gradient(135deg, #1e1e2f, #2a2a3d);
       color: #fff;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      flex-direction: column;
-      gap: 20px;
     }
 
-    h1 {
-      font-size: 2.5rem;
-      color: #00ff95;
-      text-shadow: 0 0 10px #00ff95;
-    }
-
-    .status-card {
+    .dashboard {
       background: rgba(0,0,0,0.5);
-      padding: 30px 50px;
       border-radius: 20px;
+      padding: 40px 60px;
       box-shadow: 0 0 30px rgba(0,255,149,0.5);
+      width: 350px;
       text-align: center;
       animation: glow 2s infinite alternate;
     }
@@ -38,83 +31,95 @@
       100% { box-shadow: 0 0 40px rgba(0,255,149,1); }
     }
 
-    .connectivity {
-      margin-top: 20px;
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 30px;
+      color: #00ff95;
+      text-shadow: 0 0 10px #00ff95;
+    }
+
+    .status-item {
       display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.2rem;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(0,255,149,0.2);
+      font-size: 1.1rem;
     }
 
-    .dot {
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      background: #ff3b3b;
-      animation: blink 1.5s infinite;
+    .status-item:last-child {
+      border-bottom: none;
     }
 
-    @keyframes blink {
-      0%, 50%, 100% { opacity: 0.3; }
-      25%, 75% { opacity: 1; }
-    }
-
-    .connected .dot {
-      background: #00ff95;
-      animation: pulse 1.5s infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { transform: scale(0.8); opacity: 0.6; }
-      50% { transform: scale(1.2); opacity: 1; }
-    }
-
-    button {
-      margin-top: 20px;
-      padding: 10px 25px;
-      border: none;
-      border-radius: 10px;
-      background: #00ff95;
-      color: #000;
+    .status-value {
       font-weight: bold;
-      cursor: pointer;
-      transition: 0.3s;
+      color: #00ff95;
+      text-shadow: 0 0 5px #00ff95;
     }
 
-    button:hover {
-      background: #00ffa0;
-      transform: scale(1.05);
+    .status-value.down {
+      color: #ff3b3b;
+      text-shadow: 0 0 5px #ff3b3b;
     }
 
+    .ping {
+      font-size: 0.9rem;
+      margin-top: 15px;
+      color: #ccc;
+    }
   </style>
 </head>
 <body>
 
-  <h1>Authentication API Dashboard</h1>
+  <div class="dashboard">
+    <h1>API Status</h1>
 
-  <div class="status-card">
-    <div class="connectivity" id="connectivity">
-      <div class="dot"></div>
-      <span id="status-text">Disconnected</span>
+    <div class="status-item">
+      <span>Server Status</span>
+      <span class="status-value" id="server-status">Online ✅</span>
     </div>
-    <button onclick="toggleStatus()">Toggle Connection</button>
+
+    <div class="status-item">
+      <span>Ping</span>
+      <span class="status-value" id="ping">...</span>
+    </div>
+
+    <div class="status-item">
+      <span>Requests/sec</span>
+      <span class="status-value" id="requests">...</span>
+    </div>
+
+    <div class="status-item">
+      <span>Uptime</span>
+      <span class="status-value" id="uptime">...</span>
+    </div>
+
+    <div class="ping" id="last-updated">Last updated: --:--:--</div>
   </div>
 
   <script>
-    let connected = false;
-    function toggleStatus() {
-      connected = !connected;
-      const card = document.getElementById('connectivity');
-      const text = document.getElementById('status-text');
-      if(connected) {
-        card.classList.add('connected');
-        text.textContent = 'Connected ✅';
-      } else {
-        card.classList.remove('connected');
-        text.textContent = 'Disconnected ❌';
-      }
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
     }
+
+    function updateStatus() {
+      const ping = randomInt(20, 150); // ms
+      const requests = randomInt(50, 500); // requests/sec
+      const uptime = randomInt(99, 100) + '.' + randomInt(0,99) + '%';
+
+      document.getElementById('ping').textContent = ping + ' ms';
+      document.getElementById('requests').textContent = requests + ' req/sec';
+      document.getElementById('uptime').textContent = uptime;
+
+      const now = new Date();
+      document.getElementById('last-updated').textContent = 'Last updated: ' +
+        now.getHours().toString().padStart(2,'0') + ':' +
+        now.getMinutes().toString().padStart(2,'0') + ':' +
+        now.getSeconds().toString().padStart(2,'0');
+    }
+
+    // Update every 2 seconds to simulate live API
+    updateStatus();
+    setInterval(updateStatus, 2000);
   </script>
 
 </body>
