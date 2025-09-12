@@ -4,10 +4,10 @@ import fetch from 'node-fetch';
 export async function handler(event) {
   const { category, username, password, hwid } = event.queryStringParameters || {};
 
-  if (!category || !username || !password) {
+  if (!category || !username || !password || hwid === undefined) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: 'Missing category, username, or password' }),
+      body: JSON.stringify({ error: 'Missing category, username, password, or hwid' }),
     };
   }
 
@@ -19,7 +19,7 @@ export async function handler(event) {
   const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
 
   try {
-    // Fetch the GitHub JSON
+    // Fetch GitHub JSON
     const res = await fetch(url, {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -34,8 +34,8 @@ export async function handler(event) {
     // Check if category and user exist
     if (!data[category] || !data[category][username]) {
       return {
-        statusCode: 404,
-        body: JSON.stringify({ error: 'User not found' }),
+        statusCode: 401,
+        body: JSON.stringify({ error: 'Invalid credentials' }),
       };
     }
 
@@ -45,47 +45,22 @@ export async function handler(event) {
     if (user.password !== password) {
       return {
         statusCode: 401,
-        body: JSON.stringify({ error: 'Invalid password' }),
+        body: JSON.stringify({ error: 'Invalid credentials' }),
       };
     }
 
-    // ✅ HWID logic
+    // HWID check
     if (user.hwid) {
-      // User already has a HWID, must match if provided
-      if (hwid && hwid !== user.hwid) {
+      // User already has a bound HWID → must match
+      if (hwid !== user.hwid) {
         return {
-          statusCode: 403,
-          body: JSON.stringify({ error: 'HWID mismatch' }),
+          statusCode: 401,
+          body: JSON.stringify({ error: 'Invalid credentials' }),
         };
       }
     } else {
-      // User has no HWID yet, bind it if a value is provided
-      if (hwid) {
-        user.hwid = hwid;
-
-        // Commit HWID to GitHub
-        const fileInfo = await fetch(url, {
-          headers: {
-            Authorization: `token ${GITHUB_TOKEN}`,
-            Accept: 'application/vnd.github.v3+json',
-          },
-        }).then(r => r.json());
-
-        const sha = fileInfo.sha;
-
-        await fetch(url, {
-          method: 'PUT',
-          headers: {
-            Authorization: `token ${GITHUB_TOKEN}`,
-            Accept: 'application/vnd.github.v3+json',
-          },
-          body: JSON.stringify({
-            message: `Bind HWID for user ${username}`,
-            content: Buffer.from(JSON.stringify(data, null, 2)).toString('base64'),
-            sha,
-          }),
-        });
-      }
+      // User has no HWID yet → return empty hwid
+      user.hwid = "";
     }
 
     // ✅ Return username + all user fields at top level
