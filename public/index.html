@@ -1,7 +1,121 @@
 <!DOCTYPE html>
-<html>
-<head><title>API Backend</title></head>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authentication API Dashboard</title>
+  <style>
+    /* Reset & font */
+    * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', sans-serif; }
+    body {
+      background: linear-gradient(135deg, #1e1e2f, #2a2a3d);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      color: #00ff95;
+      text-shadow: 0 0 10px #00ff95;
+    }
+
+    .status-card {
+      background: rgba(0,0,0,0.5);
+      padding: 30px 50px;
+      border-radius: 20px;
+      box-shadow: 0 0 30px rgba(0,255,149,0.5);
+      text-align: center;
+      animation: glow 2s infinite alternate;
+    }
+
+    @keyframes glow {
+      0% { box-shadow: 0 0 20px rgba(0,255,149,0.5); }
+      100% { box-shadow: 0 0 40px rgba(0,255,149,1); }
+    }
+
+    .connectivity {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.2rem;
+    }
+
+    .dot {
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: #ff3b3b;
+      animation: blink 1.5s infinite;
+    }
+
+    @keyframes blink {
+      0%, 50%, 100% { opacity: 0.3; }
+      25%, 75% { opacity: 1; }
+    }
+
+    .connected .dot {
+      background: #00ff95;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(0.8); opacity: 0.6; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 25px;
+      border: none;
+      border-radius: 10px;
+      background: #00ff95;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover {
+      background: #00ffa0;
+      transform: scale(1.05);
+    }
+
+  </style>
+</head>
 <body>
-  <h1>Authentication API is running ✅</h1>
+
+  <h1>Authentication API Dashboard</h1>
+
+  <div class="status-card">
+    <div class="connectivity" id="connectivity">
+      <div class="dot"></div>
+      <span id="status-text">Disconnected</span>
+    </div>
+    <button onclick="toggleStatus()">Toggle Connection</button>
+  </div>
+
+  <script>
+    let connected = false;
+    function toggleStatus() {
+      connected = !connected;
+      const card = document.getElementById('connectivity');
+      const text = document.getElementById('status-text');
+      if(connected) {
+        card.classList.add('connected');
+        text.textContent = 'Connected ✅';
+      } else {
+        card.classList.remove('connected');
+        text.textContent = 'Disconnected ❌';
+      }
+    }
+  </script>
+
 </body>
 </html>
