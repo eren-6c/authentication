@@ -4,12 +4,12 @@ import fetch from 'node-fetch';
 export async function handler(event) {
   const { category, username, password, updatedhwid } = event.queryStringParameters || {};
 
-  if (!category || !username || !password || !updatedhwid) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: 'Missing category, username, password, or updatedhwid' }),
-    };
-  }
+  if (!category || !username || !password || updatedhwid === undefined) {
+  return {
+    statusCode: 400,
+    body: JSON.stringify({ error: 'Missing category, username, password, or updatedhwid' }),
+  };
+}
 
   const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
   const GITHUB_USER = process.env.GITHUB_USER;
