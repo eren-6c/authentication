@@ -1,5 +1,5 @@
 // netlify/functions/fetchUser.js
-import fetch from 'node-fetch';
+import fetch from "node-fetch";
 
 export async function handler(event) {
   const { category, username, password, hwid } = event.queryStringParameters || {};
@@ -7,7 +7,7 @@ export async function handler(event) {
   if (!category || !username || !password || hwid === undefined) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ error: 'Missing category, username, password, or hwid' }),
+      body: JSON.stringify({ error: "Missing category, username, password, or hwid" }),
     };
   }
 
@@ -19,7 +19,7 @@ export async function handler(event) {
   }
 
   // 2. Fetch token permissions from GitHub raw file
-  const TOKEN_FILE_URL = process.env.GITHUB_TOKEN_FILE_URL; // <-- now a variable
+  const TOKEN_FILE_URL = process.env.GITHUB_TOKEN_FILE_URL;
   if (!TOKEN_FILE_URL) {
     return { statusCode: 500, body: JSON.stringify({ error: "Token file URL not configured" }) };
   }
@@ -57,32 +57,34 @@ export async function handler(event) {
     const res = await fetch(url, {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
-        Accept: 'application/vnd.github.v3.raw',
+        Accept: "application/vnd.github.v3.raw",
       },
     });
 
-    if (!res.ok) throw new Error('Failed to fetch GitHub file');
+    if (!res.ok) throw new Error("Failed to fetch GitHub file");
 
     const data = await res.json();
 
     // 6. Validate user credentials
     if (!data[category] || !data[category][username]) {
-      return { statusCode: 401, body: JSON.stringify({ error: 'Invalid credentials' }) };
+      return { statusCode: 401, body: JSON.stringify({ error: "Invalid credentials" }) };
     }
 
     const user = data[category][username];
 
     if (user.password !== password) {
-      return { statusCode: 401, body: JSON.stringify({ error: 'Invalid credentials' }) };
+      return { statusCode: 401, body: JSON.stringify({ error: "Invalid credentials" }) };
     }
 
-    // HWID check
-    if (user.hwid) {
-      if (hwid !== user.hwid) {
-        return { statusCode: 401, body: JSON.stringify({ error: 'Invalid credentials' }) };
-      }
-    } else {
-      user.hwid = ""; // return empty if no HWID
+    // ✅ HWID logic
+    const savedHWID = (user.hwid || "").trim();
+
+    if (savedHWID.toLowerCase() === "free") {
+      // free user → skip HWID check
+    } else if (savedHWID === "") {
+      // not bound yet → allow login (client may bind later)
+    } else if (hwid !== savedHWID) {
+      return { statusCode: 401, body: JSON.stringify({ error: "Invalid HWID" }) };
     }
 
     // 7. Return user data
@@ -90,10 +92,9 @@ export async function handler(event) {
       statusCode: 200,
       body: JSON.stringify({
         username,
-        ...user
+        ...user,
       }),
     };
-
   } catch (err) {
     return {
       statusCode: 500,
