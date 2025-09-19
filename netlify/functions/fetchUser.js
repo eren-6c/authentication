@@ -43,7 +43,7 @@ export async function handler(event) {
     return { statusCode: 403, body: JSON.stringify({ error: "Token has no read permission for these categories" }) };
   }
 
-  // ✅ Fetch database
+  // ✅ GitHub repo info
   const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
   const GITHUB_USER = process.env.GITHUB_USER;
   const GITHUB_REPO = process.env.GITHUB_REPO;
@@ -52,6 +52,7 @@ export async function handler(event) {
   const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
 
   try {
+    // Fetch JSON file from GitHub
     const res = await fetch(url, {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
@@ -71,10 +72,40 @@ export async function handler(event) {
           continue; // wrong password in this category, try next
         }
 
-        // HWID check
+        // HWID logic
         const savedHWID = (user.hwid || "").trim();
-        if (!(savedHWID.toLowerCase() === "free" || savedHWID === "" || hwid === savedHWID)) {
-          continue; // invalid HWID, try next
+
+        if (savedHWID.toLowerCase() === "free") {
+          // free user → skip HWID check
+        } else if (savedHWID === "") {
+          // ✅ First login → bind HWID
+          user.hwid = hwid;
+
+          // Save file back to GitHub
+          const fileRes = await fetch(url, {
+            headers: {
+              Authorization: `token ${GITHUB_TOKEN}`,
+              Accept: "application/vnd.github.v3+json",
+            },
+          });
+          const fileMeta = await fileRes.json();
+
+          const updatedContent = Buffer.from(JSON.stringify(data, null, 2)).toString("base64");
+
+          await fetch(url, {
+            method: "PUT",
+            headers: {
+              Authorization: `token ${GITHUB_TOKEN}`,
+              Accept: "application/vnd.github.v3+json",
+            },
+            body: JSON.stringify({
+              message: `Bind HWID for ${username} in category ${category}`,
+              content: updatedContent,
+              sha: fileMeta.sha,
+            }),
+          });
+        } else if (hwid !== savedHWID) {
+          continue; // invalid HWID, try next category
         }
 
         // ✅ Found valid user
