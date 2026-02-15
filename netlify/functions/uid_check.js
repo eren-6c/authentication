@@ -1,6 +1,6 @@
 const https = require("https");
 
-const GITHUB_UID_JSON_URL = "https://raw.githubusercontent.com/<username>/<repo>/main/uids_status.json";
+const GITHUB_UID_JSON_URL = "https://raw.githubusercontent.com/eren-6c/binanceiamge/main/uids_status.json";
 
 exports.handler = async function(event, context) {
   const uid = event.queryStringParameters?.uid;
