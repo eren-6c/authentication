@@ -1,6 +1,7 @@
 // netlify/functions/login.js
 import fetch from "node-fetch";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 export async function handler(event) {
   if (event.httpMethod !== "POST") {
@@ -12,11 +13,13 @@ export async function handler(event) {
     return { statusCode: 400, body: JSON.stringify({ error: "Missing credentials" }) };
   }
 
-  const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
-  const GITHUB_USER = process.env.GITHUB_USER;
-  const GITHUB_REPO = process.env.GITHUB_REPO;
-  const GITHUB_FILE = process.env.GITHUB_FILE;
-  const JWT_SECRET = process.env.JWT_SECRET;
+  const {
+    GITHUB_TOKEN,
+    GITHUB_USER,
+    GITHUB_REPO,
+    GITHUB_FILE,
+    JWT_SECRET
+  } = process.env;
 
   const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
 
@@ -24,8 +27,8 @@ export async function handler(event) {
     const res = await fetch(url, {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
-        Accept: "application/vnd.github.v3.raw",
-      },
+        Accept: "application/vnd.github.v3.raw"
+      }
     });
 
     const data = await res.json();
@@ -35,23 +38,30 @@ export async function handler(event) {
       if (!user) continue;
       if (user.password !== password) continue;
 
-      const savedHWID = (user.hwid || "").trim();
-      let isFree = savedHWID.toLowerCase() === "free";
+      let savedHWID = (user.hwid || "").trim();
+      const isFree = savedHWID.toLowerCase() === "free";
 
       if (!isFree) {
         if (savedHWID === "") {
-          user.hwid = hwid; // bind on first login
+          user.hwid = hwid;
           await saveGitHubFile(url, data, GITHUB_TOKEN, username);
+          savedHWID = hwid;
         } else if (savedHWID !== hwid) {
           continue;
         }
       }
+
+      const hwidHash = crypto
+        .createHash("sha256")
+        .update(savedHWID)
+        .digest("hex");
 
       const token = jwt.sign(
         {
           sub: username,
           category,
           free: isFree,
+          hwidHash
         },
         JWT_SECRET,
         { expiresIn: "2h" }
@@ -59,11 +69,12 @@ export async function handler(event) {
 
       return {
         statusCode: 200,
-        body: JSON.stringify({ token }),
+        body: JSON.stringify({ token })
       };
     }
 
     return { statusCode: 401, body: JSON.stringify({ error: "Invalid credentials" }) };
+
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
@@ -73,8 +84,8 @@ async function saveGitHubFile(url, data, token, username) {
   const meta = await fetch(url, {
     headers: {
       Authorization: `token ${token}`,
-      Accept: "application/vnd.github.v3+json",
-    },
+      Accept: "application/vnd.github.v3+json"
+    }
   }).then(r => r.json());
 
   const content = Buffer.from(JSON.stringify(data, null, 2)).toString("base64");
@@ -83,12 +94,12 @@ async function saveGitHubFile(url, data, token, username) {
     method: "PUT",
     headers: {
       Authorization: `token ${token}`,
-      Accept: "application/vnd.github.v3+json",
+      Accept: "application/vnd.github.v3+json"
     },
     body: JSON.stringify({
       message: `Bind HWID for ${username}`,
       content,
-      sha: meta.sha,
-    }),
+      sha: meta.sha
+    })
   });
 }
