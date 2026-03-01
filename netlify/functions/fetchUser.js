@@ -1,128 +1,94 @@
-// netlify/functions/fetchUser.js
+// netlify/functions/login.js
 import fetch from "node-fetch";
+import jwt from "jsonwebtoken";
 
 export async function handler(event) {
-  const { categories, username, password, hwid } = event.queryStringParameters || {};
-
-  if (!categories || !username || !password || hwid === undefined) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Missing categories, username, password, or hwid" }),
-    };
+  if (event.httpMethod !== "POST") {
+    return { statusCode: 405, body: "Method Not Allowed" };
   }
 
-  // Convert categories string into an array
-  const categoryList = categories.split(",").map(c => c.trim());
-
-  // ✅ Validate API token
-  const authHeader = event.headers.authorization || "";
-  const apiToken = authHeader.replace("Bearer ", "").trim();
-  if (!apiToken) {
-    return { statusCode: 403, body: JSON.stringify({ error: "Missing API token" }) };
+  const { username, password, hwid } = JSON.parse(event.body || "{}");
+  if (!username || !password || hwid === undefined) {
+    return { statusCode: 400, body: JSON.stringify({ error: "Missing credentials" }) };
   }
 
-  // Fetch token permissions
-  const TOKEN_FILE_URL = process.env.GITHUB_TOKEN_FILE_URL;
-  let tokens;
-  try {
-    const tokenResp = await fetch(TOKEN_FILE_URL);
-    tokens = await tokenResp.json();
-  } catch {
-    return { statusCode: 500, body: JSON.stringify({ error: "Failed to read token permissions" }) };
-  }
-
-  const tokenData = tokens[apiToken];
-  if (!tokenData) {
-    return { statusCode: 403, body: JSON.stringify({ error: "Invalid API token" }) };
-  }
-
-  // Check read permissions for at least one category
-  const allowedReadCategories = tokenData.read || [];
-  const validCategories = categoryList.filter(c => allowedReadCategories.includes(c));
-  if (validCategories.length === 0) {
-    return { statusCode: 403, body: JSON.stringify({ error: "Token has no read permission for these categories" }) };
-  }
-
-  // ✅ GitHub repo info
   const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
   const GITHUB_USER = process.env.GITHUB_USER;
   const GITHUB_REPO = process.env.GITHUB_REPO;
   const GITHUB_FILE = process.env.GITHUB_FILE;
+  const JWT_SECRET = process.env.JWT_SECRET;
 
   const url = `https://api.github.com/repos/${GITHUB_USER}/${GITHUB_REPO}/contents/${GITHUB_FILE}`;
 
   try {
-    // Fetch JSON file from GitHub
     const res = await fetch(url, {
       headers: {
         Authorization: `token ${GITHUB_TOKEN}`,
         Accept: "application/vnd.github.v3.raw",
       },
     });
-    if (!res.ok) throw new Error("Failed to fetch GitHub file");
 
     const data = await res.json();
 
-    // ✅ Try each category until we find the user
-    for (const category of validCategories) {
-      if (data[category] && data[category][username]) {
-        const user = data[category][username];
+    for (const category of Object.keys(data)) {
+      const user = data[category]?.[username];
+      if (!user) continue;
+      if (user.password !== password) continue;
 
-        if (user.password !== password) {
-          continue; // wrong password in this category, try next
+      const savedHWID = (user.hwid || "").trim();
+      let isFree = savedHWID.toLowerCase() === "free";
+
+      if (!isFree) {
+        if (savedHWID === "") {
+          user.hwid = hwid; // bind on first login
+          await saveGitHubFile(url, data, GITHUB_TOKEN, username);
+        } else if (savedHWID !== hwid) {
+          continue;
         }
-
-        // HWID logic
-        const savedHWID = (user.hwid || "").trim();
-
-        if (savedHWID.toLowerCase() === "free") {
-          // free user → skip HWID check
-        } else if (savedHWID === "") {
-          // ✅ First login → bind HWID
-          user.hwid = hwid;
-
-          // Save file back to GitHub
-          const fileRes = await fetch(url, {
-            headers: {
-              Authorization: `token ${GITHUB_TOKEN}`,
-              Accept: "application/vnd.github.v3+json",
-            },
-          });
-          const fileMeta = await fileRes.json();
-
-          const updatedContent = Buffer.from(JSON.stringify(data, null, 2)).toString("base64");
-
-          await fetch(url, {
-            method: "PUT",
-            headers: {
-              Authorization: `token ${GITHUB_TOKEN}`,
-              Accept: "application/vnd.github.v3+json",
-            },
-            body: JSON.stringify({
-              message: `Bind HWID for ${username} in category ${category}`,
-              content: updatedContent,
-              sha: fileMeta.sha,
-            }),
-          });
-        } else if (hwid !== savedHWID) {
-          continue; // invalid HWID, try next category
-        }
-
-        // ✅ Found valid user
-        return {
-          statusCode: 200,
-          body: JSON.stringify({
-            category,
-            username,
-            ...user,
-          }),
-        };
       }
+
+      const token = jwt.sign(
+        {
+          sub: username,
+          category,
+          free: isFree,
+        },
+        JWT_SECRET,
+        { expiresIn: "2h" }
+      );
+
+      return {
+        statusCode: 200,
+        body: JSON.stringify({ token }),
+      };
     }
 
-    return { statusCode: 401, body: JSON.stringify({ error: "Invalid credentials in all categories" }) };
-
+    return { statusCode: 401, body: JSON.stringify({ error: "Invalid credentials" }) };
   } catch (err) {
     return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
+}
+
+async function saveGitHubFile(url, data, token, username) {
+  const meta = await fetch(url, {
+    headers: {
+      Authorization: `token ${token}`,
+      Accept: "application/vnd.github.v3+json",
+    },
+  }).then(r => r.json());
+
+  const content = Buffer.from(JSON.stringify(data, null, 2)).toString("base64");
+
+  await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: `token ${token}`,
+      Accept: "application/vnd.github.v3+json",
+    },
+    body: JSON.stringify({
+      message: `Bind HWID for ${username}`,
+      content,
+      sha: meta.sha,
+    }),
+  });
 }
