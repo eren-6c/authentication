@@ -1,5 +1,4 @@
 // netlify/functions/fetchUser.js
-import fetch from "node-fetch";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
@@ -10,19 +9,23 @@ export async function handler(event) {
 
   const { categories, username, password, hwid } = JSON.parse(event.body || "{}");
   if (!categories || !username || !password || hwid === undefined) {
-    return { statusCode: 400, body: JSON.stringify({ error: "Missing fields" }) };
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "Missing fields" }),
+    };
   }
 
-  // API token check (unchanged behavior)
+  // API token check (unchanged)
   const authHeader = event.headers.authorization || "";
   const apiToken = authHeader.replace("Bearer ", "").trim();
   if (!apiToken) {
     return { statusCode: 403, body: JSON.stringify({ error: "Missing API token" }) };
   }
 
-  const TOKEN_FILE_URL = process.env.GITHUB_TOKEN_FILE_URL;
-  const tokenResp = await fetch(TOKEN_FILE_URL);
+  // Native fetch (Node 18)
+  const tokenResp = await fetch(process.env.GITHUB_TOKEN_FILE_URL);
   const tokens = await tokenResp.json();
+
   if (!tokens[apiToken]) {
     return { statusCode: 403, body: JSON.stringify({ error: "Invalid API token" }) };
   }
@@ -45,6 +48,10 @@ export async function handler(event) {
       Accept: "application/vnd.github.v3.raw",
     },
   });
+
+  if (!res.ok) {
+    return { statusCode: 500, body: JSON.stringify({ error: "Failed to fetch GitHub file" }) };
+  }
 
   const data = await res.json();
 
